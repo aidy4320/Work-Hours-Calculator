@@ -3,7 +3,7 @@
 > SDD **Tasks** phase. Breaks [PLAN.md](PLAN.md) (which implements [SPEC.md](SPEC.md)) into
 > numbered, ordered tasks with explicit dependencies.
 
-**Version:** 4.2 (consolidated — 16 tasks: TASK-00 … TASK-15; scaffold moved into TASK-00)
+**Version:** 4.3 (consolidated — 16 tasks; cloud backend, no Docker)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Implementation
 
@@ -26,6 +26,11 @@ A task missing any of these does **not** enter work:
 > checklist, so coverage of SPEC is unchanged — only the granularity is coarser. `[P]` = can run
 > in parallel with other `[P]` tasks once dependencies are met.
 
+> **Backend runtime — no Docker (v4.3):** the backend runs on a **hosted Supabase project**, not a
+> local stack. Schema/functions are applied to a **linked** project with `supabase db push` /
+> `supabase functions deploy`, and types are generated with `supabase gen types typescript --linked`.
+> `supabase start` (which requires Docker) is intentionally not used.
+
 ---
 
 ### TASK-00 — Open the project (repo + folder skeleton + app scaffold)
@@ -47,30 +52,31 @@ Deps:         —
 Out of scope: Supabase setup, env vars, shared client, schema, auth, features
 ```
 
-### TASK-01 — Supabase setup & shared client
+### TASK-01 — Supabase setup & shared client (cloud, no Docker)
 ```
-Goal:         Connect the app to a Supabase local stack via a single shared client.
+Goal:         Connect the app to a hosted Supabase project via a single shared client.
 Spec:         PLAN §1, §2 (lib/supabase.ts), §8
-In:           env vars VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
-Out:          supabase/ config (`supabase init`); .env + .env.example; src/lib/supabase.ts client; `supabase start` works
-Edge:         Docker missing → documented prereq; missing env → clear startup error; one shared client only
-DoD:          • `supabase start` exposes local Postgres + Studio • importing the client connects in a smoke test
+In:           env vars VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (Supabase project → Settings → API)
+Out:          supabase/ config (`supabase init`); project linked (`supabase link`); .env + .env.example;
+              src/lib/supabase.ts client
+Edge:         Missing env → clear startup error; one shared client only; wrong project ref on link
+DoD:          • app connects to the hosted Supabase project • importing the client connects in a smoke test
               • .env git-ignored, .env.example committed
 Deps:         TASK-00
-Out of scope: Schema, auth, features
+Out of scope: Local Docker stack (`supabase start`); schema, auth, features
 ```
 
 ### TASK-02 — Database schema & generated types
 ```
 Goal:         Create all tables, the shared updated_at trigger, signup seed, and TS types.
 Spec:         PLAN §3, §6; SPEC §2/§3/§5/§7
-In:           SQL migrations
+In:           SQL migrations (applied to the linked cloud project via `supabase db push`)
 Out:          Tables user_settings, time_entries (+idx), alerts, notification_settings,
               notification_log; set_updated_at(); handle_new_user seed; src/types/db.ts
 Edge:         CHECKs: hours/target ≥0, entry_date ≤ today, threshold 0–100, freq in {daily,weekly};
               unique(user,month) on alerts; unique(user,type,period) on notification_log
-DoD:          • all migrations apply • CHECKs reject bad values • signup seeds settings rows
-              • generated types compile and import
+DoD:          • `supabase db push` applies all migrations to the linked project • CHECKs reject bad values
+              • signup seeds settings rows • `supabase gen types typescript --linked` types compile and import
 Deps:         TASK-01
 Out of scope: RLS policies, business logic
 ```

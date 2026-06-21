@@ -3,7 +3,7 @@
 > Companion to [SPEC.md](SPEC.md). This document defines the **architecture**, **data
 > structures**, **API/data access**, and **technology stack** for the application.
 
-**Version:** 2.1
+**Version:** 2.2 (dev workflow uses a hosted Supabase project — no Docker)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Development
 
@@ -462,8 +462,11 @@ await supabase.from('notification_settings')
   sends through the email provider (Resend/SendGrid) using a server-only API key. The provider's
   sending domain must be verified (SPF/DKIM) for deliverability.
 - **HTTPS:** terminated by Supabase and the static host.
-- **Local dev:** `supabase start` runs the full stack (Postgres, Auth, Studio) in Docker; the
-  Vite dev server points at the local Supabase URL.
+- **Dev workflow (no Docker):** development runs against a **hosted Supabase project** (a free
+  cloud project, ideally a separate dev project). Link it once with `supabase link`, apply schema
+  with `supabase db push`, generate types with `supabase gen types typescript --linked`, and point
+  the Vite dev server at the project's URL/anon key via `.env`. The local Docker stack
+  (`supabase start`) is intentionally not used.
 
 ### Environment variables (frontend)
 | Variable                  | Description                          | Example                                  |
