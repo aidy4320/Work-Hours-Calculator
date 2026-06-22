@@ -16,6 +16,11 @@ const { auth } = vi.hoisted(() => ({
 }))
 vi.mock('./lib/supabase', () => ({ supabase: { auth } }))
 
+// Home renders the Dashboard; stub its data hook so routing tests stay focused on auth.
+vi.mock('./hooks/useSummary', () => ({
+  useSummary: () => ({ data: null, isLoading: true, isError: false }),
+}))
+
 import App from './App'
 
 describe('auth routing', () => {

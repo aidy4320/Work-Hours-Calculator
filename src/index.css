@@ -262,6 +262,80 @@ h3 {
   font-size: 1.6rem;
   font-weight: 600;
 }
+.home__signout {
+  margin-top: 0.5rem;
+}
+
+/* ── Dashboard ─────────────────────────────────────────────────── */
+.dash {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.75rem;
+}
+.dash--muted {
+  color: var(--muted);
+}
+.dash__head {
+  margin-bottom: 1.25rem;
+}
+.dash__eyebrow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--link);
+}
+.dash__month {
+  font-size: 1.4rem;
+  margin-top: 0.15rem;
+}
+.dash__figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.figure__num {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.figure__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+.progress {
+  height: 12px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress__bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
+  transition: width 0.4s ease;
+}
+.progress__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ok);
+  background: #e6f3ed;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
 
 /* ── Responsive: stack auth on small screens ───────────────────── */
 @media (max-width: 720px) {
