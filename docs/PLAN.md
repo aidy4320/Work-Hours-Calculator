@@ -3,7 +3,7 @@
 > Companion to [SPEC.md](SPEC.md). This document defines the **architecture**, **data
 > structures**, **API/data access**, and **technology stack** for the application.
 
-**Version:** 2.2 (dev workflow uses a hosted Supabase project — no Docker)
+**Version:** 2.4 (vacation/holiday entries credit hours; calendar visual-only; no Docker)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Development
 
@@ -139,9 +139,11 @@ src/
 │   ├── EntryForm.tsx         # add/edit hours + notes
 │   ├── EntryList.tsx         # daily entries, edit/delete actions
 │   ├── MonthNavigator.tsx    # prev/next month
-│   └── AlertBanner.tsx       # dismissible goal-reached banner
+│   ├── AlertBanner.tsx       # dismissible goal-reached banner
+│   └── CalendarGrid.tsx      # month grid; per-day marking + logged-hours indicator
 └── pages/
-    └── MonthView.tsx         # combines the above for a given month
+    ├── MonthView.tsx         # combines the above for a given month
+    └── CalendarPage.tsx      # calendar with work/vacation/holiday day marking (SPEC §8)
 ```
 
 ---
@@ -188,7 +190,8 @@ $$ language plpgsql;
 | `id`           | BIGINT        | PK, generated always as identity              |                                             |
 | `user_id`      | UUID          | NOT NULL, FK → `auth.users(id)`, default `auth.uid()` | Scopes the row to its owner.        |
 | `entry_date`   | DATE          | NOT NULL, CHECK `entry_date <= current_date`  | No future dates (SPEC §2).                  |
-| `hours_worked` | NUMERIC(7,2)  | NOT NULL, CHECK `hours_worked >= 0`           | Decimal, 0 allowed, no upper limit.         |
+| `entry_type`   | TEXT          | NOT NULL, default `'work'`, CHECK in (`work`,`vacation`,`holiday`) | Day-off entries credit standard hours (SPEC §3/§4). |
+| `hours_worked` | NUMERIC(7,2)  | NOT NULL, default `0`, CHECK `hours_worked >= 0` | Logged hours for `work`; ignored for vacation/holiday. |
 | `notes`        | TEXT          | NULL                                          | Optional project/work note.                 |
 | `created_at`   | TIMESTAMPTZ   | NOT NULL, default `now()`                     |                                             |
 | `updated_at`   | TIMESTAMPTZ   | NOT NULL, default `now()`, trigger on update  |                                             |
@@ -196,6 +199,9 @@ $$ language plpgsql;
 > **Multiple entries per day are allowed** (SPEC Story 2). Monthly totals aggregate all entries
 > within the calendar month.
 > Index: `ix_time_entries_user_date (user_id, entry_date)` for fast month queries.
+> **Credited hours:** a `vacation`/`holiday` day contributes the user's `standard_daily_hours`
+> to the monthly total (counted once per day); `work` entries contribute their `hours_worked`.
+> Both `get_monthly_summary` and the alert trigger use this same combined total.
 
 ### Table: `alerts`
 | Column         | Type          | Constraints                                   | Notes                                       |
@@ -238,6 +244,21 @@ $$ language plpgsql;
 > "send at most once per period"** (SPEC §7, §Edge Cases 9): the notify job inserts a log row
 > before/while sending, and a duplicate insert is rejected, so the same email is never sent twice.
 
+### Table: `day_markings`
+| Column       | Type        | Constraints                                            | Notes                                          |
+|--------------|-------------|--------------------------------------------------------|------------------------------------------------|
+| `id`         | BIGINT      | PK, generated always as identity                       |                                                |
+| `user_id`    | UUID        | NOT NULL, FK → `auth.users(id)`, default `auth.uid()`  |                                                |
+| `marked_date`| DATE        | NOT NULL                                               | Future dates allowed (plan ahead, SPEC §8).    |
+| `day_type`   | TEXT        | NOT NULL, CHECK in (`work`,`vacation`,`holiday`)       | The marking shown on the calendar.             |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default `now()`                              |                                                |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default `now()`, trigger on update           |                                                |
+
+> Unique constraint: `uq_day_markings_user_date (user_id, marked_date)` — one marking per day.
+> Calendar writes use an upsert on this key (change = update, clear = delete). Markings are
+> informational only and never feed into `get_monthly_summary` (SPEC §8). No future-date CHECK
+> (unlike `time_entries`), so users can mark planned vacations.
+
 ### Row Level Security (applied to all application tables)
 
 > The SQL below is an **illustrative example** of the RLS approach. The authoritative,
@@ -250,9 +271,10 @@ alter table time_entries          enable row level security;
 alter table alerts                enable row level security;
 alter table notification_settings enable row level security;
 alter table notification_log      enable row level security;
+alter table day_markings          enable row level security;
 
 -- Full-CRUD pattern, repeated for user_settings, time_entries, alerts,
--- notification_settings (example shown for time_entries):
+-- notification_settings, day_markings (example shown for time_entries):
 create policy "own rows - select" on time_entries
   for select using (auth.uid() = user_id);
 create policy "own rows - insert" on time_entries
@@ -276,18 +298,28 @@ user can only ever see/modify their own rows (and can only read — never write 
 
 ## 4. Core Business Logic
 
+### Monthly worked total (shared helper)
+A helper `monthly_worked(p_uid, p_year, p_month) returns numeric` computes the month's total once,
+reused by the summary and the alert trigger so they never drift:
+```
+worked = SUM(hours_worked WHERE entry_type = 'work')
+       + COUNT(DISTINCT entry_date WHERE entry_type IN ('vacation','holiday')) × standard_daily_hours
+```
+Vacation/holiday days credit the standard daily hours (SPEC §3/§4); a day off ignores any `work`
+hours logged the same date (counted once).
+
 ### Monthly summary
-Computed via a Postgres view/RPC function `get_monthly_summary(p_year int, p_month int)` (a
-`SECURITY INVOKER` function so RLS still applies). Given a year and month:
-1. Sum `hours_worked` across `time_entries` for `auth.uid()` within that calendar month.
+Computed via a Postgres RPC `get_monthly_summary(p_year int, p_month int)` (`SECURITY INVOKER`, so
+RLS still applies). Given a year and month:
+1. `worked = monthly_worked(auth.uid(), p_year, p_month)` (logged + credited day-off hours).
 2. `remaining = greatest(target - worked, 0)`.
 3. `percent = round(worked / target * 100, 2)` if `target > 0`, else `100` (goal of 0 met immediately, SPEC §3).
-4. Return a per-day breakdown `[{date, total_hours}]`.
+4. Return a per-day breakdown `[{date, total_hours}]` (work hours per day; day-off days shown as the credited hours).
 All arithmetic in SQL `numeric`; results rounded to 2 decimals for display only.
 
 ### Alert detection
-Implemented as a Postgres trigger on `time_entries` (insert/update/delete) — or an Edge Function
-called after mutations:
+Implemented as a Postgres trigger on `time_entries` (insert/update/delete):
+- Uses the **same `monthly_worked`** total (so a vacation/holiday entry can also complete the goal).
 - If the affected month's total **>= target** and no `alerts` row exists for that `(user_id, month)` → insert one with `achieved_at = now()`.
 - If a later edit drops the total **below** target, the existing alert row remains (history of first achievement); the live summary's `goal_reached` flag reflects current state.
 - Target changes mid-month recalculate progress immediately (summary is computed live).
@@ -358,9 +390,14 @@ await supabase.from('user_settings')
 
 ### 5.3 Time Entries
 ```ts
-// Create — entry_date <= today and hours_worked >= 0 enforced by CHECK constraints
+// Create a work entry — entry_date <= today and hours_worked >= 0 enforced by CHECK constraints
 await supabase.from('time_entries')
-  .insert({ entry_date: '2026-06-18', hours_worked: 7.5, notes: 'Client project' })
+  .insert({ entry_date: '2026-06-18', entry_type: 'work', hours_worked: 7.5, notes: 'Client project' })
+  .select().single()
+
+// Mark a day off (credits standard daily hours; hours_worked left at 0)
+await supabase.from('time_entries')
+  .insert({ entry_date: '2026-06-19', entry_type: 'vacation' })
   .select().single()
 
 // List a calendar month (ordered)
@@ -404,6 +441,20 @@ await supabase.from('notification_settings')
 > `notification_log` is written only by the server-side `notify` function — the client does not
 > insert into it (its RLS allows the user to read their own log rows, but not write them).
 
+### 5.7 Day markings (calendar)
+```ts
+// List a month's markings (SPEC §8)
+await supabase.from('day_markings')
+  .select('marked_date, day_type')
+  .gte('marked_date', '2026-06-01').lte('marked_date', '2026-06-30')
+// Set / change a day's marking (upsert on the unique (user_id, marked_date) key)
+await supabase.from('day_markings')
+  .upsert({ marked_date: '2026-06-15', day_type: 'vacation' }, { onConflict: 'user_id,marked_date' })
+// Clear a marking
+await supabase.from('day_markings').delete().eq('marked_date', '2026-06-15')
+```
+> The calendar also reads `time_entries` for the month to flag days with logged hours.
+
 ---
 
 ## 6. Frontend Structure & Behaviour
@@ -417,6 +468,9 @@ await supabase.from('notification_settings')
 - Responsive layout for small screens (SPEC §6 "Mobile responsiveness").
 - Same session works on any device/browser — log in anywhere, see the same up-to-date data
   (SPEC §6 "Cross-Device Access").
+- A **calendar page** (`CalendarPage` + `CalendarGrid`) renders the month as a grid; clicking a
+  day sets/changes/clears its marking (work/vacation/holiday) and days with logged hours are
+  flagged. Month navigation is shared with the rest of the app (SPEC §8).
 - A **settings/preferences screen** lets the user toggle each email-notification type, set the
   behind-target threshold, and choose reminder cadence (reads/writes `notification_settings`).
 

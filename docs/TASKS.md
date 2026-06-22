@@ -3,7 +3,7 @@
 > SDD **Tasks** phase. Breaks [PLAN.md](PLAN.md) (which implements [SPEC.md](SPEC.md)) into
 > numbered, ordered tasks with explicit dependencies.
 
-**Version:** 4.3 (consolidated — 16 tasks; cloud backend, no Docker)
+**Version:** 4.5 (18 tasks; vacation/holiday entries credit hours — revises TASK-02/04/05/10)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Implementation
 
@@ -71,10 +71,10 @@ Out of scope: Local Docker stack (`supabase start`); schema, auth, features
 Goal:         Create all tables, the shared updated_at trigger, signup seed, and TS types.
 Spec:         PLAN §3, §6; SPEC §2/§3/§5/§7
 In:           SQL migrations (applied to the linked cloud project via `supabase db push`)
-Out:          Tables user_settings, time_entries (+idx), alerts, notification_settings,
-              notification_log; set_updated_at(); handle_new_user seed; src/types/db.ts
-Edge:         CHECKs: hours/target ≥0, entry_date ≤ today, threshold 0–100, freq in {daily,weekly};
-              unique(user,month) on alerts; unique(user,type,period) on notification_log
+Out:          Tables user_settings, time_entries (+idx, entry_type work/vacation/holiday),
+              alerts, notification_settings, notification_log; set_updated_at(); handle_new_user seed; src/types/db.ts
+Edge:         CHECKs: hours/target ≥0, entry_date ≤ today, entry_type in {work,vacation,holiday},
+              threshold 0–100, freq in {daily,weekly}; unique(user,month) on alerts; unique(user,type,period) on notification_log
 DoD:          • `supabase db push` applies all migrations to the linked project • CHECKs reject bad values
               • signup seeds settings rows • `supabase gen types typescript --linked` types compile and import
 Deps:         TASK-01
@@ -97,12 +97,13 @@ Out of scope: Business logic, UI
 
 ### TASK-04 — Monthly summary RPC
 ```
-Goal:         Compute monthly worked/remaining/percent/breakdown for the caller.
-Spec:         PLAN §4, §5.4; SPEC §4, Edge Cases §3/§4/§6
+Goal:         Compute monthly worked/remaining/percent/breakdown for the caller, where worked =
+              logged work hours + vacation/holiday days × standard daily hours (via monthly_worked helper).
+Spec:         PLAN §4, §5.4; SPEC §4, Edge Cases §1/§3/§4/§6
 In:           p_year int, p_month int
 Out:          {target,worked,remaining,percent_complete,goal_reached,is_current_month,daily_breakdown[]}
-Edge:         target=0 → 100%; empty month → zeros; leap year; Dec→Jan; no float drift
-DoD:          • SECURITY INVOKER (RLS applies) • unit tests assert all edge cases
+Edge:         target=0 → 100%; empty month → zeros; leap year; Dec→Jan; vacation/holiday credit; no float drift
+DoD:          • SECURITY INVOKER (RLS applies) • day-off days credit standard hours • unit tests assert all edge cases
 Deps:         TASK-03
 Out of scope: Alerts, emailing, UI
 ```
@@ -113,7 +114,8 @@ Goal:         Create one alert per user-month when total reaches/exceeds target.
 Spec:         PLAN §4; SPEC §5, Edge Cases §7
 In:           insert/update/delete on time_entries
 Out:          alerts row (achieved_at) at threshold, once per user-month
-Edge:         Exact match (inclusive); single large entry; two entries summing to goal;
+Edge:         Uses the same monthly_worked total (vacation/holiday entries can complete the goal);
+              exact match (inclusive); single large entry; two entries summing to goal;
               later drop below target keeps the row; target=0
 DoD:          • tests produce exactly one correct alert per scenario • survives drop below target
 Deps:         TASK-04
@@ -174,13 +176,14 @@ Out of scope: Editing, navigation
 
 ### TASK-10 — Time entries UI (form + list)
 ```
-Goal:         Add/edit/delete hours+notes and list a month's entries.
+Goal:         Add/edit/delete day entries (log work hours OR mark vacation/holiday) and list a month.
 Spec:         SPEC Story 2/5, §3, Edge Cases §1/§2; PLAN §6
-In:           {entry_date, hours_worked, notes?}; month for list
-Out:          Created/updated/deleted entries; interactive list
-Edge:         Negative/future rejected with message; 2-decimal cap; 0 allowed; empty-list state;
-              delete confirm; multiple entries per day
-DoD:          • valid submit saves • invalid blocked with clear errors • edit/delete refresh the list
+In:           {entry_date, entry_type: work|vacation|holiday, hours_worked?, notes?}; month for list
+Out:          Created/updated/deleted entries; interactive list; day-off entries shown distinctly
+Edge:         work needs hours (negative/future rejected, 2-decimal cap, 0 allowed); vacation/holiday
+              needs no hours; empty-list state; delete confirm; multiple work entries per day
+DoD:          • can log hours or mark a day off • day-off credits standard hours in the summary
+              • invalid blocked with clear errors • edit/delete refresh the list
 Deps:         TASK-08
 Out of scope: Month navigation, alerts
 ```
@@ -249,12 +252,45 @@ Deps:         TASK-13, TASK-14
 Out of scope: Load/performance testing
 ```
 
+> **Calendar feature (v4.4).** The two tasks below were added later. They slot logically into
+> earlier phases (16 with the DB layer, 17 with the frontend UI) but keep new numbers so existing
+> ones aren't renumbered.
+
+### TASK-16 — Day markings table + RLS (calendar data)
+```
+Goal:         Store per-day work/vacation/holiday markings with per-user isolation.
+Spec:         PLAN §3, §5.7; SPEC §8, NFR §8
+In:           SQL migration (applied via `supabase db push`)
+Out:          day_markings table (unique user_id+marked_date) + set_updated_at trigger +
+              full-CRUD own-rows RLS + regenerated src/types/db.ts
+Edge:         one marking per day (unique); future dates allowed (no date CHECK);
+              day_type in {work,vacation,holiday}; cross-user access denied
+DoD:          • migration applies to cloud • CHECK rejects bad day_type • upsert replaces a day's
+              marking • User A cannot read/modify B's markings • types compile
+Deps:         TASK-03
+Out of scope: Calendar UI; affecting hour totals/target
+```
+
+### TASK-17 — Calendar page (day marking)
+```
+Goal:         A month calendar where each day shows its marking + logged-hours indicator, editable inline.
+Spec:         SPEC §8, Story 7; PLAN §2, §5.7, §6
+In:           Selected month; day clicks
+Out:          api/markings wrapper + useDayMarkings hook + CalendarGrid + CalendarPage (route)
+Edge:         mark/change/clear a day; future days markable; days with logged hours flagged;
+              empty month renders; previous/next month navigation
+DoD:          • grid renders the month • clicking a day sets/changes/clears its marking (optimistic)
+              • hours-logged days indicated • component tests pass
+Deps:         TASK-08, TASK-16
+Out of scope: Marking affecting target/progress math
+```
+
 ---
 
 ## Critical Path
-`00 → 01 → 02 → 03 → 04 → 05` , `04→06`
-`01 → 07` ; `02,04 → 08 → {09,10,11,12} → 13`
-`03,06 → 14` ; `13,14 → 15`
+`00 → 01 → 02 → 03 → 04 → 05` , `04→06` , `03→16`
+`01 → 07` ; `02,04 → 08 → {09,10,11,12,17} → 13`
+`16 → 17` ; `03,06 → 14` ; `13,14 → 15`
 
 > RLS (TASK-03) precedes any trusted client data access. The email engine (TASK-06) can be built
 > in parallel with the frontend (07–13) once the schema (02) and summary (04) exist.
@@ -269,6 +305,7 @@ Out of scope: Load/performance testing
 | §5 In-app Alerts | 02, 05, 11 |
 | §6 Persistence & Cross-Device | 02, 15 |
 | §7 Email Notifications | 02, 06, 12, 14 |
-| Per-user isolation (NFR §8) | 03 |
-| Edge cases (§1–9) | 04, 05, 06, 10, 13 |
+| §8 Calendar & Day Marking | 16, 17 |
+| Per-user isolation (NFR §8) | 03, 16 |
+| Edge cases (§1–10) | 04, 05, 06, 10, 13, 16, 17 |
 | Security/HTTPS/hosting (NFR §7/§9) | 03, 14, 15 |

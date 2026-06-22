@@ -130,6 +130,7 @@ export type Database = {
         Row: {
           created_at: string
           entry_date: string
+          entry_type: string
           hours_worked: number
           id: number
           notes: string | null
@@ -139,7 +140,8 @@ export type Database = {
         Insert: {
           created_at?: string
           entry_date: string
-          hours_worked: number
+          entry_type?: string
+          hours_worked?: number
           id?: never
           notes?: string | null
           updated_at?: string
@@ -148,6 +150,7 @@ export type Database = {
         Update: {
           created_at?: string
           entry_date?: string
+          entry_type?: string
           hours_worked?: number
           id?: never
           notes?: string | null
@@ -188,6 +191,10 @@ export type Database = {
       get_monthly_summary: {
         Args: { p_month: number; p_year: number }
         Returns: Json
+      }
+      monthly_worked: {
+        Args: { p_month: number; p_uid: string; p_year: number }
+        Returns: number
       }
     }
     Enums: {

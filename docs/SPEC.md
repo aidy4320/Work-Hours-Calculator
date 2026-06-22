@@ -28,17 +28,26 @@ Help independent professionals track their work hours accurately, manage their w
 - Each registered user has their own independent profile and settings (multi-user support)
 
 ### 3. Daily Time Tracking
-- User can log work hours for a specific date
+- For a given day, the user can either **log work hours** or **mark the day as a day off**
+  (vacation or holiday) — chosen in the same entry form
 - User can enter hours as decimal values (e.g., 7.5 hours)
 - User can enter hours as whole numbers (e.g., 8 hours)
-- User can edit previously logged hours for any day
-- User can delete logged hours for any day
-- Time entries include: date, hours worked, and optional notes/project name
+- A **vacation/holiday** day requires no hours: it automatically **credits the user's standard
+  daily hours** toward the monthly total (see §4), so the day off counts toward the goal
+- User can edit previously logged hours, or change/clear a day-off marking, for any day
+- User can delete logged hours / day-off entries for any day
+- Time entries include: date, an entry type (work / vacation / holiday), hours worked (for work),
+  and optional notes/project name
 - Each entry is timestamped when created/modified
 
+> This day-off marking lives in the **time-entry flow** and **affects the hour calculation**. It is
+> separate from the visual calendar markings in §8 (which do not affect calculations).
+
 ### 4. Monthly Tracking & Progress
-- System displays total hours worked in the current month
-- System displays remaining hours needed to reach monthly target
+- System displays total hours for the current month, where
+  **total = logged work hours + (vacation/holiday days × standard daily hours)**
+- System displays remaining hours needed to reach monthly target (target − total)
+- Vacation/holiday days therefore **reduce the remaining hours** just like worked hours
 - System shows progress as percentage (e.g., "65% of monthly goal")
 - System displays daily breakdown for the current month
 - User can view data for previous months (read-only)
@@ -78,6 +87,17 @@ on the user's account.
 - Emails are sent server-side on a schedule (e.g. a scheduled job / cron) and/or on triggering
   events; they do not depend on the user having the app open.
 - Every notification email includes a way to manage/disable email preferences.
+
+### 8. Calendar & Day Marking
+- A calendar page shows a monthly grid where each day displays its marking, if any.
+- A user can mark a day as one of: **work day**, **vacation**, or **holiday**.
+- Each day has at most one marking; the user can change or remove it.
+- Markings are allowed on past, present, and future dates (e.g. to plan a vacation ahead).
+- Each marking type is shown distinctly (e.g. color/label) so the month is readable at a glance.
+- The calendar also indicates days that have logged hours (so work activity is visible alongside markings).
+- Markings are **visual/informational only**: they do **not** change the monthly hour target or
+  progress/remaining-hours math. Hours come solely from logged time entries.
+- The calendar supports navigating between months (previous/next), like the rest of the app.
 
 ---
 
@@ -186,6 +206,19 @@ on the user's account.
 - Historical months show totals and daily breakdown
 - Navigation is intuitive (previous/next month buttons)
 
+### Story 7: Mark Days on a Calendar
+**As a** freelancer  
+**I want to** see a calendar and mark each day as a work day, vacation, or holiday  
+**So that** I have a clear visual overview of my month
+
+**Acceptance Criteria:**
+- I can open a calendar page showing the current month as a grid
+- I can click a day and mark it as work day, vacation, or holiday
+- I can change or clear a day's marking
+- Each marking type is visually distinct, and days with logged hours are indicated
+- I can navigate to other months (previous/next)
+- I can mark future days (e.g. plan a vacation)
+
 ---
 
 ## Edge Cases
@@ -195,6 +228,9 @@ on the user's account.
 - **Decimal precision**: System should handle values like 7.5, 8.25, accepting up to 2 decimal places
 - **Zero hours**: User can enter 0 hours for a day (no work)
 - **Excessive hours**: User can enter more than 12 hours in a day (no upper limit)
+- **Vacation/holiday credit**: A vacation/holiday day credits the standard daily hours; if standard daily hours is 0, the credit is 0
+- **Day-off + work on same day**: A vacation/holiday day is counted as the standard-hours credit and ignores any work hours logged the same day, so a day is never counted twice
+- **Changing entry type**: Switching a day between work and vacation/holiday recalculates the month's total immediately
 
 ### 2. Date Boundaries
 - **Future dates**: User cannot log hours for future dates (system enforces this)
@@ -244,6 +280,14 @@ on the user's account.
 - **Timezone**: "End of month" and reminder schedules respect a sensible timezone (UTC by default; user timezone if available)
 - **Unverified email**: If email verification is enabled and the address is unverified, notification emails are withheld until verified
 
+### 10. Calendar & Day Marking
+- **One marking per day**: A day can have at most one marking; re-marking replaces the previous one
+- **Clearing**: Removing a marking returns the day to its unmarked state
+- **Future dates**: Marking future days is allowed (unlike logging hours, which forbids future dates)
+- **Unmarked days**: Days with no marking render normally (no error)
+- **Marking vs. hours**: A day can have both a marking and logged hours; markings never alter target/progress math
+- **Timezone**: Calendar days use the same date handling as the rest of the app (UTC-consistent)
+
 ---
 
 ## Out of Scope
@@ -260,7 +304,7 @@ on the user's account.
 9. **Recurring templates**: No ability to schedule recurring work entries
 10. **Overtime calculation**: No special rules for overtime hours or rates
 11. **Break tracking**: No tracking of breaks or lunch time
-12. **Vacation/Leave management**: No support for holidays or leave days
+12. **Leave-balance management**: Vacation/holiday days can be entered and credit standard daily hours toward the monthly target (see §3/§4), but there is no leave-balance accounting, accrual, approval workflow, or distinct vacation/sick quotas. (The §8 calendar markings remain visual only.)
 13. **Reporting/PDF export**: No report generation or PDF export functionality
 14. **Collaboration features**: No comments, sharing, or team communication
 15. **Offline mode**: Requires a connection to the server; no offline-first local caching
@@ -307,7 +351,8 @@ on the user's account.
 - entryId (unique identifier)
 - userId (foreign key)
 - date (date)
-- hoursWorked (decimal number)
+- entryType (enum: work | vacation | holiday, default work)
+- hoursWorked (decimal number - used for work entries; vacation/holiday credit standard daily hours)
 - notes (optional text)
 - createdAt (timestamp)
 - updatedAt (timestamp)
@@ -345,6 +390,16 @@ on the user's account.
 - status (enum: sent | failed)
 ```
 
+### Day Marking Table
+```
+- markingId (unique identifier)
+- userId (foreign key)
+- date (date - one marking per user per date)
+- dayType (enum: work | vacation | holiday)
+- createdAt (timestamp)
+- updatedAt (timestamp)
+```
+
 ---
 
 ## Non-Functional Requirements
@@ -366,15 +421,16 @@ on the user's account.
 1. User can register an account and log in ✓
 2. User can log in from any computer and see the same data ✓
 3. User can set monthly hour target ✓
-4. User can log hours for today ✓
+4. User can log hours for today, or mark the day as vacation/holiday (credits standard hours) ✓
 5. User can view current month progress ✓
 6. User receives alert when goal is reached ✓
 7. User can edit/delete previous entries ✓
 8. Data persists in a cloud database, isolated per user ✓
-9. All edge cases handled gracefully ✓
+9. User can mark days on a calendar (work / vacation / holiday) ✓
+10. All edge cases handled gracefully ✓
 
 ---
 
-**Version**: 2.0  
+**Version**: 2.3  
 **Last Updated**: 2026-06-18  
 **Status**: Ready for Development
