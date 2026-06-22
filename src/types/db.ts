@@ -185,7 +185,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_monthly_summary: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
