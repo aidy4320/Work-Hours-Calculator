@@ -20,15 +20,10 @@ export function AuthLayout({
           Hours<span className="dot">.</span>
         </div>
 
-        <div>
-          <div className="brand__motif" aria-hidden="true">
-            {Array.from({ length: BARS }).map((_, i) => (
-              <div key={i} className={'brand__bar' + (i < FILLED ? ' brand__bar--filled' : '')} />
-            ))}
-          </div>
-          <div className="brand__readout">
-            128<span> / 160h this month</span>
-          </div>
+        <div className="brand__motif" aria-hidden="true">
+          {Array.from({ length: BARS }).map((_, i) => (
+            <div key={i} className={'brand__bar' + (i < FILLED ? ' brand__bar--filled' : '')} />
+          ))}
         </div>
 
         <p className="brand__tagline">Every hour, counted toward your month.</p>
