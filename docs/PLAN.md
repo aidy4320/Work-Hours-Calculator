@@ -3,7 +3,7 @@
 > Companion to [SPEC.md](SPEC.md). This document defines the **architecture**, **data
 > structures**, **API/data access**, and **technology stack** for the application.
 
-**Version:** 2.4 (vacation/holiday entries credit hours; calendar visual-only; no Docker)
+**Version:** 2.5 (username login via profiles + auth-login function; no Docker)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Development
 
@@ -182,7 +182,21 @@ $$ language plpgsql;
 | `updated_at`          | TIMESTAMPTZ    | NOT NULL, default `now()`, trigger on update  |                                        |
 
 > A row is auto-created for each new user via an `on auth.users` insert trigger
-> (`handle_new_user`) seeding default settings (e.g. target 0, daily 8).
+> (`handle_new_user`) seeding default settings (e.g. target 0, daily 8), notification settings,
+> and the `profiles` row (username from signup metadata).
+
+### Table: `profiles`
+| Column       | Type        | Constraints                                            | Notes                                  |
+|--------------|-------------|--------------------------------------------------------|----------------------------------------|
+| `user_id`    | UUID        | PK, FK → `auth.users(id)`, default `auth.uid()`        | One profile per user.                  |
+| `username`   | TEXT        | NOT NULL, unique on `lower(username)`                  | Login identifier + display name.       |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default `now()`                              |                                        |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default `now()`, trigger on update           |                                        |
+
+> Login is by **username + password**. Supabase authenticates by email, so the **`auth-login`
+> Edge Function** (service role, `--no-verify-jwt`) resolves username → email and signs in
+> server-side, returning the session; it returns a generic error so usernames/emails can't be
+> enumerated. RLS: users read/update only their own profile.
 
 ### Table: `time_entries`
 | Column         | Type          | Constraints                                   | Notes                                       |

@@ -34,7 +34,7 @@ describe('auth routing', () => {
     window.history.pushState({}, '', '/')
     render(<App />)
     expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
   })
 

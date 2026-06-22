@@ -11,10 +11,13 @@ Help independent professionals track their work hours accurately, manage their w
 ## Functional Requirements
 
 ### 1. Account Registration & Authentication
-- New users can register an account using email and password
-- Email address must be unique (one account per email)
+- New users register with a **username, email, and password**
+- **Username** is unique and is the login identifier; **email** is still required (for password
+  reset and notifications) and is also unique
 - Passwords are stored securely (hashed and salted, never in plain text)
-- Registered users can log in from any computer or device using their credentials
+- Registered users **log in with username + password** from any computer or device (username is
+  resolved to the account's email server-side; the email is never exposed to the client)
+- The username is shown in the app as the signed-in identity
 - Users can log out, ending their session securely
 - Authenticated sessions are maintained via secure tokens (e.g., JWT or signed session cookies)
 - Users can reset a forgotten password via an email-based reset flow
@@ -430,6 +433,6 @@ on the user's account.
 
 ---
 
-**Version**: 2.3  
+**Version**: 2.4  
 **Last Updated**: 2026-06-18  
 **Status**: Ready for Development

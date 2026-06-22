@@ -143,10 +143,10 @@ Out of scope: pg_cron scheduling & provider domain setup (TASK-14), templates
 
 ### TASK-07 — Frontend auth (provider, routing, screens)
 ```
-Goal:         Session context, route gating, and sign-up/login/logout/reset UI.
+Goal:         Session context, route gating, and sign-up/login/logout/reset UI (username login).
 Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         PLAN §2/§6, §5.1; SPEC §1, Story 0a/0b
-In:           email:string, password:string (+ newPassword on reset)
+In:           signup: username + email + password; login: username + password (+ newPassword on reset)
 Out:          AuthProvider + ProtectedRoute + Router; working auth screens
 Edge:         Duplicate email; weak/invalid password; wrong credentials; expired reset link;
               no email enumeration; deep link while logged out → redirect

@@ -5,6 +5,7 @@ import { AuthLayout } from './AuthLayout'
 
 export function SignUpPage() {
   const navigate = useNavigate()
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -14,18 +15,25 @@ export function SignUpPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    if (username.trim().length < 3) {
+      setError('Choose a username of at least 3 characters.')
+      return
+    }
     if (password.length < 8) {
       setError('Use a password of at least 8 characters.')
       return
     }
     setBusy(true)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username: username.trim() } },
+    })
     setBusy(false)
     if (error) {
       setError(error.message)
       return
     }
-    // If email confirmation is on, there is no session yet — tell the user to confirm.
     if (data.session) {
       navigate('/', { replace: true })
     } else {
@@ -42,6 +50,20 @@ export function SignUpPage() {
       ) : (
         <form onSubmit={onSubmit} noValidate>
           {error && <div className="form__msg form__msg--error">{error}</div>}
+          <div className="field">
+            <label className="field__label" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              className="field__input"
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
           <div className="field">
             <label className="field__label" htmlFor="email">
               Email
