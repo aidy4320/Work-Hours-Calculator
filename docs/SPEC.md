@@ -28,10 +28,9 @@ Help independent professionals track their work hours accurately, manage their w
 - Each registered user has their own independent profile and settings (multi-user support)
 
 ### 3. Daily Time Tracking
-- For a given day, the user can either **log work hours** or **mark the day as a day off**
-  (vacation or holiday) — chosen in the same entry form
-- User can enter hours as decimal values (e.g., 7.5 hours)
-- User can enter hours as whole numbers (e.g., 8 hours)
+- For a given day, the user first chooses the **entry type** — work / vacation / holiday
+- The **hours field is shown only when "work" is selected**; vacation/holiday have no hours field
+- For a work entry, the user enters hours as decimal (e.g., 7.5) or whole numbers (e.g., 8)
 - A **vacation/holiday** day requires no hours: it automatically **credits the user's standard
   daily hours** toward the monthly total (see §4), so the day off counts toward the goal
 - User can edit previously logged hours, or change/clear a day-off marking, for any day

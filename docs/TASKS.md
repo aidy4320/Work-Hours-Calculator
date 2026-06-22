@@ -180,8 +180,8 @@ Goal:         Add/edit/delete day entries (log work hours OR mark vacation/holid
 Spec:         SPEC Story 2/5, §3, Edge Cases §1/§2; PLAN §6
 In:           {entry_date, entry_type: work|vacation|holiday, hours_worked?, notes?}; month for list
 Out:          Created/updated/deleted entries; interactive list; day-off entries shown distinctly
-Edge:         work needs hours (negative/future rejected, 2-decimal cap, 0 allowed); vacation/holiday
-              needs no hours; empty-list state; delete confirm; multiple work entries per day
+Edge:         hours field shown ONLY when type = work (negative/future rejected, 2-decimal cap, 0 allowed);
+              vacation/holiday have no hours field; empty-list state; delete confirm; multiple work entries per day
 DoD:          • can log hours or mark a day off • day-off credits standard hours in the summary
               • invalid blocked with clear errors • edit/delete refresh the list
 Deps:         TASK-08
