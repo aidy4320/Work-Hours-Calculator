@@ -9,5 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    // Only run app tests here; Edge Function tests run under Deno (CI), not Vitest.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 })
