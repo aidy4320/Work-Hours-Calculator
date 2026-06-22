@@ -3,7 +3,7 @@
 > SDD **Tasks** phase. Breaks [PLAN.md](PLAN.md) (which implements [SPEC.md](SPEC.md)) into
 > numbered, ordered tasks with explicit dependencies.
 
-**Version:** 4.5 (18 tasks; vacation/holiday entries credit hours — revises TASK-02/04/05/10)
+**Version:** 4.6 (18 tasks; UI tasks must apply the frontend-design skill)
 **Last Updated:** 2026-06-18
 **Status:** Ready for Implementation
 
@@ -30,6 +30,11 @@ A task missing any of these does **not** enter work:
 > local stack. Schema/functions are applied to a **linked** project with `supabase db push` /
 > `supabase functions deploy`, and types are generated with `supabase gen types typescript --linked`.
 > `supabase start` (which requires Docker) is intentionally not used.
+
+> **Design (v4.6):** every UI task (07, 09, 10, 11, 12, 13, 17) MUST apply the **`frontend-design`
+> skill** (`.claude/skills/frontend-design/SKILL.md`) for palette, typography, layout, and signature
+> — so the app has one intentional visual identity, not templated defaults. Each such task carries a
+> `Design:` line as a reminder.
 
 ---
 
@@ -139,6 +144,7 @@ Out of scope: pg_cron scheduling & provider domain setup (TASK-14), templates
 ### TASK-07 — Frontend auth (provider, routing, screens)
 ```
 Goal:         Session context, route gating, and sign-up/login/logout/reset UI.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         PLAN §2/§6, §5.1; SPEC §1, Story 0a/0b
 In:           email:string, password:string (+ newPassword on reset)
 Out:          AuthProvider + ProtectedRoute + Router; working auth screens
@@ -165,6 +171,7 @@ Out of scope: Visual components
 ### TASK-09 — Dashboard & progress view
 ```
 Goal:         Show worked / remaining / percentage with a progress bar.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         SPEC Story 3, §4; PLAN §6
 In:           Summary (useSummary)
 Out:          Rendered progress UI
@@ -177,6 +184,7 @@ Out of scope: Editing, navigation
 ### TASK-10 — Time entries UI (form + list)
 ```
 Goal:         Add/edit/delete day entries (log work hours OR mark vacation/holiday) and list a month.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         SPEC Story 2/5, §3, Edge Cases §1/§2; PLAN §6
 In:           {entry_date, entry_type: work|vacation|holiday, hours_worked?, notes?}; month for list
 Out:          Created/updated/deleted entries; interactive list; day-off entries shown distinctly
@@ -191,6 +199,7 @@ Out of scope: Month navigation, alerts
 ### TASK-11 — Month navigation & alert banner
 ```
 Goal:         Navigate months (past = read-only) and show a dismissible goal banner.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         SPEC Story 4/6, §4/§5, Edge Cases §7; PLAN §6
 In:           Current year/month; active alert (useAlert)
 Out:          Prev/next selection; read-only past months; dismissible banner with achieved time
@@ -203,6 +212,7 @@ Out of scope: Email notifications
 ### TASK-12 — Notification preferences screen
 ```
 Goal:         Let users toggle email types, threshold, and reminder cadence.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         SPEC §7, Story 4b; PLAN §6
 In:           Prefs (useNotificationPrefs)
 Out:          Updated preferences
@@ -215,6 +225,7 @@ Out of scope: Server-side sending
 ### TASK-13 — Compose MonthView + responsive + frontend tests
 ```
 Goal:         Assemble the main screen, make it responsive, and test the UI.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md) for the whole layout.
 Spec:         PLAN §2/§6, §9; SPEC §6 (mobile)
 In:           Dashboard, entry form/list, navigator, banner, prefs
 Out:          Working authenticated MonthView; responsive layout
@@ -274,6 +285,7 @@ Out of scope: Calendar UI; affecting hour totals/target
 ### TASK-17 — Calendar page (day marking)
 ```
 Goal:         A month calendar where each day shows its marking + logged-hours indicator, editable inline.
+Design:       Apply the frontend-design skill (.claude/skills/frontend-design/SKILL.md).
 Spec:         SPEC §8, Story 7; PLAN §2, §5.7, §6
 In:           Selected month; day clicks
 Out:          api/markings wrapper + useDayMarkings hook + CalendarGrid + CalendarPage (route)
