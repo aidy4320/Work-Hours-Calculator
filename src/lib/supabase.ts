@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from '../types/db'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -10,6 +11,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Single shared client for the whole app (PLAN §2).
-// TASK-02 will regenerate DB types and switch this to createClient<Database>(...).
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Single shared, fully-typed client for the whole app (PLAN §2).
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
