@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/AuthProvider'
 import { Dashboard } from '../components/Dashboard'
+import { TimeEntries } from '../components/TimeEntries'
 
 // Authenticated app shell — grows into the full MonthView in TASK-13.
 export function Home() {
@@ -18,10 +19,15 @@ export function Home() {
 
       <Dashboard year={year} month={month} />
 
-      <p style={{ color: 'var(--muted)', marginTop: '2rem' }}>
-        Time entries and the calendar arrive in the next tasks.
-      </p>
-      <button className="btn btn--primary home__signout" onClick={() => supabase.auth.signOut()}>
+      <div style={{ marginTop: '1.5rem' }}>
+        <TimeEntries year={year} month={month} />
+      </div>
+
+      <button
+        className="btn btn--primary home__signout"
+        style={{ marginTop: '2rem' }}
+        onClick={() => supabase.auth.signOut()}
+      >
         Sign out
       </button>
     </div>

@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react'
 
-// Accumulating-hours motif: bars fill toward the monthly goal (the product's core idea).
-const BARS = 16
-const FILLED = 9
-
 export function AuthLayout({
   title,
   subtitle,
@@ -15,28 +11,22 @@ export function AuthLayout({
 }) {
   return (
     <div className="auth">
-      <aside className="auth__brand">
-        <div className="brand__mark">
-          Hours<span className="dot">.</span>
-        </div>
+      <div className="auth__card">
+        <aside className="auth__brand">
+          <div className="brand__mark">
+            Hours<span className="dot">.</span>
+          </div>
+          <p className="brand__tagline">Every hour, counted toward your month.</p>
+        </aside>
 
-        <div className="brand__motif" aria-hidden="true">
-          {Array.from({ length: BARS }).map((_, i) => (
-            <div key={i} className={'brand__bar' + (i < FILLED ? ' brand__bar--filled' : '')} />
-          ))}
-        </div>
-
-        <p className="brand__tagline">Every hour, counted toward your month.</p>
-        <div className="brand__foot">Time tracking for freelancers.</div>
-      </aside>
-
-      <main className="auth__panel">
-        <div className="auth__form">
-          <h1 className="auth__title">{title}</h1>
-          <p className="auth__subtitle">{subtitle}</p>
-          {children}
-        </div>
-      </main>
+        <main className="auth__panel">
+          <div className="auth__form">
+            <h1 className="auth__title">{title}</h1>
+            <p className="auth__subtitle">{subtitle}</p>
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

@@ -25,6 +25,9 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const CRON_SECRET = Deno.env.get('NOTIFY_CRON_SECRET') ?? ''
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') ?? 'onboarding@resend.dev'
+const EMAIL_FROM_NAME = Deno.env.get('EMAIL_FROM_NAME') ?? 'Hours Reminders'
+// Resend accepts "Name <email>"; add the display name unless EMAIL_FROM already carries one.
+const EMAIL_FROM_FULL = EMAIL_FROM.includes('<') ? EMAIL_FROM : `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
 
@@ -48,7 +51,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html }),
+      body: JSON.stringify({ from: EMAIL_FROM_FULL, to, subject, html }),
     })
     return res.ok
   } catch {
